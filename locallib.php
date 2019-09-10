@@ -20,26 +20,54 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/**
- * Возвращает количество пользователей в глобальной группы
- *
- * @param $cohort
- * @return mixed
- */
-function local_cohortpro_get_count_members($cohort)
-{
+function local_cohortpro_get_cohort($id) {
     global $DB;
-    return $DB->count_records('cohort_members', array('cohortid' => $cohort->id));
+    return $DB->get_record('cohort', ['id' => $id], '*', MUST_EXIST);
 }
 
 /**
- * Возвращает количество курсов, на которые подписана глобальная группа
+ * Возвращает количество участников глобальной группы
  *
  * @param $cohort
  * @return mixed
  */
-function local_cohortpro_get_count_courses($cohort)
-{
+function local_cohortpro_get_count_members($cohort) {
+    global $DB;
+    return $DB->count_records('cohort_members', ['cohortid' => $cohort->id]);
+}
+
+/**
+ * Возвращает массив участников глобальной группы
+ *
+ * @param $cohort
+ * @return mixed
+ */
+function local_cohortpro_get_members($cohort, $page = 0, $perpage = 25) {
+    global $DB;
+
+    $fields = "SELECT u.*";
+    $countfields = 'SELECT COUNT(1)';
+    $sql = " FROM {user} u
+             JOIN {cohort_members} cm ON (cm.userid = u.id AND cm.cohortid = :cohortid)";
+    $params = [
+            'cohortid' => $cohort->id
+    ];
+
+    $order = ' ORDER BY u.lastname';
+
+    return [
+            'totalmembers' => $DB->count_records_sql($countfields . $sql, $params),
+            'members'      => $DB->get_records_sql($fields . $sql . $order, $params, $page * $perpage, $perpage)
+    ];
+}
+
+/**
+ * Возвращает количество курсов глобальной группы
+ *
+ * @param $cohort
+ * @return mixed
+ */
+function local_cohortpro_get_count_courses($cohort) {
     global $DB;
 
     $sql = 'SELECT COUNT(DISTINCT e.courseid)
@@ -47,19 +75,109 @@ function local_cohortpro_get_count_courses($cohort)
             WHERE e.enrol = ? AND e.customint1 = ?';
 
     return $DB->count_records_sql($sql, [
-        'cohort',
-        $cohort->id
+            'cohort',
+            $cohort->id
     ]);
 }
 
 /**
- * Возвращает объект, содержащий ссылку
- * на базовую страницу плагина с заданными параметрами.
+ * Возвращает массив курсов глобальной групп
  *
- * @param array $params
- * @return moodle_url
+ * @param $cohort
+ * @param int $page
+ * @param int $perpage
+ * @return mixed
  */
-function local_cohortpro_get_baseurl($params)
-{
-    return new moodle_url('/local/cohortpro/index.php', $params);
+function local_cohortpro_get_courses($cohort, $page = 0, $perpage = 25) {
+    global $DB;
+
+    $fields = "SELECT c.*";
+    $countfields = 'SELECT COUNT(1)';
+    $sql = " FROM {course} c
+             JOIN {enrol} e ON (e.courseid = c.id AND e.enrol = 'cohort' AND e.customint1 = :cohortid)";
+    $params = [
+            'cohortid' => $cohort->id
+    ];
+
+    $order = ' ORDER BY c.fullname';
+
+    return [
+            'totalcourses' => $DB->count_records_sql($countfields . $sql, $params),
+            'courses'      => $DB->get_records_sql($fields . $sql . $order, $params, $page * $perpage, $perpage)
+    ];
+}
+
+
+
+
+/**
+ * @return array
+ */
+function local_cohortpro_get_all_empty_cohorts($page = 0, $perpage = 25, $search = '') {
+    global $DB;
+
+    $fields = "SELECT c.*, " . context_helper::get_preload_record_columns_sql('ctx');
+    $countfields = "SELECT COUNT(*)";
+    $sql = " FROM {cohort} c
+             JOIN {context} ctx ON ctx.id = c.contextid ";
+    $params = array();
+    $wheresql = 'WHERE (SELECT COUNT(*) FROM {cohort_members} mem WHERE mem.cohortid = c.id) = 0 ';
+
+    if ($excludedcontexts = cohort_get_invisible_contexts()) {
+        list($excludedsql, $excludedparams) = $DB->get_in_or_equal($excludedcontexts, SQL_PARAMS_NAMED, 'excl', false);
+        $wheresql = ($wheresql ? ' AND ' : ' WHERE ') . ' c.contextid ' . $excludedsql;
+        $params = array_merge($params, $excludedparams);
+    }
+
+    $totalcohorts = $allcohorts = $DB->count_records_sql($countfields . $sql . $wheresql, $params);
+
+    if (!empty($search)) {
+        list($searchcondition, $searchparams) = cohort_get_search_query($search, 'c');
+        $wheresql .= ($wheresql ? ' AND ' : ' WHERE ') . $searchcondition;
+        $params = array_merge($params, $searchparams);
+        $totalcohorts = $DB->count_records_sql($countfields . $sql . $wheresql, $params);
+    }
+
+    $order = " ORDER BY c.name ASC, c.idnumber ASC";
+    $cohorts = $DB->get_records_sql($fields . $sql . $wheresql . $order, $params, $page * $perpage, $perpage);
+
+    // Preload used contexts, they will be used to check view/manage/assign capabilities and display categories names.
+    foreach (array_keys($cohorts) as $key) {
+        context_helper::preload_from_record($cohorts[$key]);
+    }
+
+    return array(
+            'totalcohorts' => $totalcohorts,
+            'cohorts'      => $cohorts,
+            'allcohorts'   => $allcohorts
+    );
+}
+
+
+/**
+ * Возвращает код ссылки с информацией и иконкой
+ *
+ * @param moodle_url $url
+ * @param string $icon
+ * @param string $text
+ * @param string $title
+ * @return mixed
+ */
+function local_cohortpro_cell_link($url, $icon, $text, $title) {
+    global $OUTPUT;
+
+    return html_writer::tag('span',
+            html_writer::link(
+                    $url,
+                    $text . ' ' . html_writer::tag('span',
+                            $OUTPUT->pix_icon($icon, $title),
+                            ['class' => 'quickediticon visibleifjs']
+                    ),
+                    [
+                            'title' => $title,
+                            'class' => 'quickeditlink'
+                    ]
+            ),
+            ['class' => 'inplaceeditable inplaceeditable-text']
+    );
 }

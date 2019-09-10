@@ -26,29 +26,31 @@ require_once($CFG->libdir . '/adminlib.php');
 require_once('./locallib.php');
 
 $page = optional_param('page', 0, PARAM_INT);
-$cohort = optional_param('cohort', 0, PARAM_INT);
+$mode = optional_param('mode', 0, PARAM_INT);
+$cohortid = optional_param('id', 0, PARAM_INT);
 $searchquery = optional_param('search', '', PARAM_RAW);
+$onlyempty = optional_param('onlyempty', false, PARAM_BOOL);
 
 require_login();
 
 $context = context_system::instance();
 
-$strcohorts = get_string('cohorts', 'cohort');
+$manager = has_capability('moodle/cohort:manage', $context);
+if (!$manager) {
+    require_capability('moodle/cohort:view', $context);
+}
 
 $PAGE->set_pagelayout('admin');
 $PAGE->set_context($context);
-$PAGE->set_url('/cohort/index.php', array('contextid' => $context->id));
-$PAGE->set_title($strcohorts);
+$PAGE->set_url('/local/cohortpro/index.php', ['contextid' => $context->id]);
+$PAGE->set_title(get_string('cohorts', 'cohort'));
 $PAGE->set_heading($COURSE->fullname);
 
-echo $OUTPUT->header();
-
-if ($cohort) {
-    print_object($cohort);
-    die;
+if ($onlyempty) {
+    $cohorts = local_cohortpro_get_all_empty_cohorts($page, 25, $searchquery);
+} else {
+    $cohorts = cohort_get_all_cohorts($page, 25, $searchquery);
 }
-
-$cohorts = cohort_get_all_cohorts($page, 25, $searchquery);
 
 $count = '';
 if ($cohorts['allcohorts'] > 0) {
@@ -59,74 +61,124 @@ if ($cohorts['allcohorts'] > 0) {
     }
 }
 
+echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('cohortsin', 'cohort', $context->get_context_name()) . $count);
 
-$params = array('page' => $page);
+$params = [
+        'page' => $page
+];
 if ($searchquery) {
     $params['search'] = $searchquery;
 }
 
 // Add search form.
-$search = html_writer::start_tag('form', array('id' => 'searchcohortquery', 'method' => 'get', 'class' => 'form-inline search-cohort'));
+$search = html_writer::start_tag('form', [
+        'id'     => 'searchcohortquery',
+        'method' => 'get',
+        'class'  => 'form-inline search-cohort'
+]);
 $search .= html_writer::start_div('m-b-1');
 $search .= html_writer::label(get_string('searchcohort', 'cohort'), 'cohort_search_q', true,
-    array('class' => 'm-r-1')); // No : in form labels!
-$search .= html_writer::empty_tag('input', array('id' => 'cohort_search_q', 'type' => 'text', 'name' => 'search',
-    'value' => $searchquery, 'class' => 'form-control m-r-1'));
-$search .= html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('search', 'cohort'),
-    'class' => 'btn btn-secondary'));
+        ['class' => 'm-r-1']); // No : in form labels!
+$search .= html_writer::empty_tag('input', [
+        'id'    => 'cohort_search_q',
+        'type'  => 'text',
+        'name'  => 'search',
+        'value' => $searchquery,
+        'class' => 'form-control m-r-1'
+]);
+$search .= html_writer::empty_tag('input', [
+        'type'  => 'submit',
+        'value' => get_string('search', 'cohort'),
+        'class' => 'btn btn-secondary'
+]);
+$search .= html_writer::end_div();
+$search .= html_writer::start_div('m-b-1');
+$params_onlyempty = [
+        'id'    => 'cohort_onlyempty',
+        'type'  => 'checkbox',
+        'name'  => 'onlyempty',
+        'class' => 'form-control',
+        'style' => 'margin-top: 1px !important;'
+];
+if ($onlyempty) {
+    $params_onlyempty['checked'] = 'checked';
+}
+$search .= html_writer::empty_tag('input', $params_onlyempty);
+$search .= html_writer::label('Без участников', 'cohort_onlyempty', true, [
+        'class' => 'm-r-1',
+        'style' => 'margin-top: 0 !important;'
+]);
 $search .= html_writer::end_div();
 $search .= html_writer::end_tag('form');
 echo $search;
 
 // Output pagination bar.
 echo $OUTPUT->paging_bar(
-    $cohorts['totalcohorts'],
-    $page,
-    25,
-    local_cohortpro_get_baseurl($params)
+        $cohorts['totalcohorts'],
+        $page,
+        25,
+        new moodle_url('/local/cohortpro/index.php', $params)
 );
 
-$data = array();
+$data = [];
 
 foreach ($cohorts['cohorts'] as $cohort) {
     $cohortcontext = context::instance_by_id($cohort->contextid);
 
     if ($cohortcontext->contextlevel == CONTEXT_COURSECAT) {
         $category = html_writer::link(new moodle_url('/cohort/index.php',
-            array('contextid' => $cohort->contextid)), $cohortcontext->get_context_name(false));
+                ['contextid' => $cohort->contextid]), $cohortcontext->get_context_name(false));
     } else {
         $category = $cohortcontext->get_context_name(false);
     }
+
     if (empty($cohort->component)) {
         $component = get_string('nocomponent', 'cohort');
     } else {
         $component = get_string('pluginname', $cohort->component);
     }
 
-    $urlparams = array('id' => $cohort->id, 'returnurl' => local_cohortpro_get_baseurl($params));
+    $urlparams = [
+            'id'        => $cohort->id,
+            'returnurl' => (new moodle_url('/local/cohortpro/index.php', $params))->out_as_local_url()
+    ];
+
+    $members = local_cohortpro_get_count_members($cohort);
+    if ($members > 0) {
+        $members = local_cohortpro_cell_link(
+                new moodle_url('/local/cohortpro/members.php', $urlparams),
+                'i/preview',
+                $members,
+                'Показать участников'
+        );
+    }
+
+    $courses = local_cohortpro_get_count_courses($cohort);
+    if ($courses > 0) {
+        $courses = local_cohortpro_cell_link(
+                new moodle_url('/local/cohortpro/courses.php', $urlparams),
+                'i/preview',
+                $courses,
+                'Показать курсы'
+        );
+    }
+
     $buttons = [
-        html_writer::link(
-            new moodle_url('/cohort/edit.php', $urlparams),
-            $OUTPUT->pix_icon('t/edit', get_string('edit')),
-            ['title' => get_string('edit')]
-        ),
-        html_writer::link(
-            new moodle_url($baseurl->out_as_local_url(), [
-                'cohort' => $cohort->id
-            ]),
-            $OUTPUT->pix_icon('i/preview', get_string('show')),
-            ['title' => get_string('show')]
-        ),
+            html_writer::link(
+                    new moodle_url('/cohort/edit.php', $urlparams),
+                    $OUTPUT->pix_icon('t/edit', get_string('edit')),
+                    ['title' => get_string('edit')]
+            )
     ];
 
     $line = [
-        $category,
-        $cohort->name,
-        local_cohortpro_get_count_members($cohort),
-        local_cohortpro_get_count_courses($cohort),
-        $component,
-        implode(' ', $buttons)
+            $category,
+            $cohort->name,
+            $component,
+            $members,
+            $courses,
+            implode(' ', $buttons)
     ];
 
     $data[] = $row = new html_table_row($line);
@@ -137,27 +189,32 @@ foreach ($cohorts['cohorts'] as $cohort) {
 
 $table = new html_table();
 $table->head = [
-    get_string('category'),
-    get_string('name', 'cohort'),
-    get_string('memberscount', 'cohort'),
-    'Количество курсов',
-    get_string('component', 'cohort'),
-    get_string('edit')
+        get_string('category'),
+        get_string('name', 'cohort'),
+        get_string('component', 'cohort'),
+        get_string('memberscount', 'cohort'),
+        'Количество курсов',
+        get_string('edit')
 ];
 $table->colclasses = [
-    'leftalign category',
-    'leftalign name',
-    'centeralign size',
-    'centeralign course',
-    'centeralign source',
-    'centeralign action'
+        'leftalign',
+        'leftalign',
+        'centeralign',
+        'centeralign',
+        'centeralign',
+        'centeralign'
 ];
 $table->id = 'cohorts';
 $table->attributes['class'] = 'admintable generaltable';
 $table->data = $data;
 
 echo html_writer::table($table);
-echo $OUTPUT->paging_bar($cohorts['totalcohorts'], $page, 25, $baseurl);
+echo $OUTPUT->paging_bar(
+        $cohorts['totalcohorts'],
+        $page,
+        25,
+        new moodle_url('/local/cohortpro/index.php', $params)
+);
 
 echo $OUTPUT->footer();
 
