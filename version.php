@@ -22,8 +22,8 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2019091000;
+$plugin->version   = 2019091600;
 $plugin->requires  = 2014111000;
 $plugin->component = 'local_cohortpro';
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.0.1rc';
+$plugin->maturity = MATURITY_STABLE;
+$plugin->release = '1.0.0';
