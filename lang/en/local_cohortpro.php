@@ -21,3 +21,11 @@
  */
  
 $string['pluginname'] = 'Control cohorts';
+
+$string['coursescount'] = 'Courses count';
+$string['showcourses'] = 'Show courses';
+$string['showmembers'] = 'Show members';
+$string['all'] = 'All';
+$string['withoutmembers'] = 'Only without members';
+$string['withoutmemberswithsuspend'] = 'Only without members with suspend';
+$string['deletedcohort'] = 'Deleting the list of cohort: {$a}';
