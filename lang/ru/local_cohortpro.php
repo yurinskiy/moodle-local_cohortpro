@@ -21,3 +21,10 @@
  */
 
 $string['pluginname'] = 'Управление глобальными группами';
+$string['coursescount'] = 'Количество курсов';
+$string['showcourses'] = 'Показать курсы';
+$string['showmembers'] = 'Показать участников';
+$string['all'] = 'Всех';
+$string['withoutmembers'] = 'Показать пустые';
+$string['withoutmemberswithsuspend'] = 'Показать пустые с учетом заблокированных';
+$string['deletedcohort'] = 'Удаление списка данных глобальных групп: {$a}';

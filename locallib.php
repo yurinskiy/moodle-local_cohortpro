@@ -29,11 +29,39 @@ function local_cohortpro_get_cohort($id) {
  * Возвращает количество участников глобальной группы
  *
  * @param $cohort
+ * @param int $method
  * @return mixed
  */
-function local_cohortpro_get_count_members($cohort) {
+function local_cohortpro_get_count_members($cohort, $method = 0) {
     global $DB;
-    return $DB->count_records('cohort_members', ['cohortid' => $cohort->id]);
+
+    switch ($method) {
+        case 1:
+            $sql = 'SELECT COUNT(1)
+                FROM {cohort_members} cm
+                JOIN {user} u ON (u.id = cm.userid AND u.suspended = 0)
+                WHERE cm.cohortid = :cohortid';
+
+            $params = [
+                    'cohortid' => $cohort->id
+            ];
+
+            return $DB->count_records_sql($sql, $params);
+        case 2:
+            $sql = 'SELECT COUNT(1)
+                FROM {cohort_members} cm
+                JOIN {user} u ON (u.id = cm.userid AND u.suspended = 1)
+                WHERE cm.cohortid = :cohortid';
+
+            $params = [
+                    'cohortid' => $cohort->id
+            ];
+
+            return $DB->count_records_sql($sql, $params);
+        default:
+            return $DB->count_records('cohort_members', ['cohortid' => $cohort->id]);
+
+    }
 }
 
 /**
@@ -107,25 +135,43 @@ function local_cohortpro_get_courses($cohort, $page = 0, $perpage = 25) {
     ];
 }
 
-
-
-
 /**
  * @return array
  */
-function local_cohortpro_get_all_empty_cohorts($page = 0, $perpage = 25, $search = '') {
+function local_cohortpro_get_all_empty_cohorts($page = 0, $perpage = 25, $search = '', $method = 0) {
     global $DB;
 
     $fields = "SELECT c.*, " . context_helper::get_preload_record_columns_sql('ctx');
     $countfields = "SELECT COUNT(*)";
+
     $sql = " FROM {cohort} c
-             JOIN {context} ctx ON ctx.id = c.contextid ";
+             JOIN {context} ctx ON ctx.id = c.contextid";
+
+    // Защита от перебора
+    if ($method > 2) {
+        $method = 0;
+    }
+
+    switch ($method) {
+        case 0:
+            $wheresql = '';
+            break;
+        case 1:
+            $wheresql = ' WHERE (SELECT COUNT(1) FROM {cohort_members} cm WHERE cm.cohortid = c.id) = 0 ';
+            break;
+        case 2:
+            $wheresql =
+                    ' WHERE (SELECT COUNT(1) FROM {cohort_members} cm JOIN {user} u ON (u.id = cm.userid AND u.suspended = 0) WHERE cm.cohortid = c.id) = 0 ';
+            break;
+        default:
+            $wheresql = '';
+    }
+
     $params = array();
-    $wheresql = 'WHERE (SELECT COUNT(*) FROM {cohort_members} mem WHERE mem.cohortid = c.id) = 0 ';
 
     if ($excludedcontexts = cohort_get_invisible_contexts()) {
         list($excludedsql, $excludedparams) = $DB->get_in_or_equal($excludedcontexts, SQL_PARAMS_NAMED, 'excl', false);
-        $wheresql = ($wheresql ? ' AND ' : ' WHERE ') . ' c.contextid ' . $excludedsql;
+        $wheresql .= ($wheresql ? ' AND ' : ' WHERE ') . ' c.contextid ' . $excludedsql;
         $params = array_merge($params, $excludedparams);
     }
 
@@ -153,7 +199,6 @@ function local_cohortpro_get_all_empty_cohorts($page = 0, $perpage = 25, $search
     );
 }
 
-
 /**
  * Возвращает код ссылки с информацией и иконкой
  *
@@ -180,4 +225,18 @@ function local_cohortpro_cell_link($url, $icon, $text, $title) {
             ),
             ['class' => 'inplaceeditable inplaceeditable-text']
     );
+}
+
+/**
+ * Получение объекта глобальной группы по идентификатору
+ *
+ * @param int $id
+ * @return mixed
+ */
+function local_cohortpro_get_by_id($id) {
+    global $DB;
+
+    $cohort = $DB->get_record('cohort', array('id'=>$id), '*', MUST_EXIST);
+
+    return $cohort;
 }
