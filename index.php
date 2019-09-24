@@ -56,6 +56,9 @@ $params = [
 if ($searchquery) {
     $params['search'] = $searchquery;
 }
+if ($method_empty) {
+    $params['method_empty'] = $method_empty;
+}
 
 if ($delete and $confirm and confirm_sesskey()) {
     $data = explode('!', $deleted);
