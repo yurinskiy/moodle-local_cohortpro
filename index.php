@@ -378,7 +378,7 @@ $table->data = $data;
 
 echo html_writer::start_tag('form', [
         'id'     => 'form-cohorts-input',
-        'action' => new moodle_url('/local/cohortpro/index.php', ['delete' => 1]),
+        'action' => new moodle_url('/local/cohortpro/index.php', array_merge(['delete' => 1], $params)),
         'method' => 'POST'
 ]);
 echo html_writer::table($table);
