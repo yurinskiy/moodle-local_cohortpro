@@ -34,6 +34,7 @@ $method_empty = optional_param('method_empty', 0, PARAM_INT);
 $delete = optional_param('delete', 0, PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_BOOL);
 $deleted = optional_param('deleted', '', PARAM_RAW);
+$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
 
 require_login();
 
@@ -61,10 +62,16 @@ if ($method_empty) {
 }
 
 if ($delete and $confirm and confirm_sesskey()) {
+	if ($returnurl) {
+		$returnurl = new moodle_url($returnurl);
+	} else {
+		$returnurl = new moodle_url('/local/cohortpro/index.php', $params);
+	}
+	
     $data = explode('!', $deleted);
 
     if (empty($data)) {
-        redirect(new moodle_url('/local/cohortpro/index.php', $params), 'Вы не выбрали ни одной глобальной группы для удаления!');
+        redirect($returnurl, 'Вы не выбрали ни одной глобальной группы для удаления!');
         die;
     }
 
@@ -76,7 +83,7 @@ if ($delete and $confirm and confirm_sesskey()) {
         }
     }
 
-    redirect(new moodle_url('/local/cohortpro/index.php', $params), 'Глобальные группы удалены!');
+    redirect($returnurl, 'Глобальные группы удалены!');
     die;
 } else if ($delete) {
     $data = $_POST['cohorts'];
@@ -135,8 +142,7 @@ if ($delete and $confirm and confirm_sesskey()) {
             'sesskey'   => sesskey(),
             'returnurl' => new moodle_url('/local/cohortpro/index.php', $params)
     ]);
-    $messages = get_string('deletedcohort', 'local_cohortpro', html_writer::table($table))
-    ;
+    $messages = get_string('deletedcohort', 'local_cohortpro', html_writer::table($table));
     echo $OUTPUT->confirm($messages, $yesurl, new moodle_url('/local/cohortpro/index.php', $params));
 
     echo $OUTPUT->footer();
