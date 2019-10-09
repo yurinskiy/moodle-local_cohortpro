@@ -59,6 +59,7 @@ if ($returnurl) {
 }
 
 $params = [
+        'id' => $id,
         'page' => $page
 ];
 
