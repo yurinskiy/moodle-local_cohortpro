@@ -16,18 +16,20 @@
 
 /**
  * @package   local_cohortpro
- * @copyright 2019, YuriyYurinskiy <yuriyyurinskiy@yandex.ru>
+ * @copyright 2023, Yuriy Yurinskiy <yuriyyurinskiy@yandex.ru>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
- 
-$string['pluginname'] = 'Control cohorts';
 
-$string['coursescount'] = 'Courses count';
-$string['showcourses'] = 'Show courses';
-$string['showmembers'] = 'Show members';
-$string['all'] = 'All';
-$string['withoutmembers'] = 'Only without members';
-$string['withoutmemberswithsuspend'] = 'Only without members with suspend';
-$string['deletedcohort'] = 'Deleting the list of cohort: {$a}';
-$string['menu_filter'] = 'Manage cohorts';
-$string['menu_upload'] = 'Upload user';
+defined('MOODLE_INTERNAL') || die();
+
+$capabilities = [
+    'local/cohortpro:manager' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
+        'clonepermissionsfrom' => 'moodle/cohort:manage',
+    ],
+];

@@ -28,3 +28,5 @@ $string['all'] = 'Всех';
 $string['withoutmembers'] = 'Показать пустые';
 $string['withoutmemberswithsuspend'] = 'Показать пустые с учетом заблокированных';
 $string['deletedcohort'] = 'Удаление списка данных глобальных групп: {$a}';
+$string['menu_filter'] = 'Фильтрация и чистка глобальных групп';
+$string['menu_upload'] = 'Загрузка в глобальную группу с фильтром';

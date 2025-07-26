@@ -23,20 +23,55 @@
 function local_cohortpro_extend_settings_navigation($settingsnav, $context) {
     global $CFG, $PAGE;
 
-    if (is_siteadmin() && $settingnode = $settingsnav->find('users', navigation_node::TYPE_SETTING)) {
-        $strfoo = get_string('pluginname','local_cohortpro');
-        $url = new moodle_url('/local/cohortpro/index.php');
-        $foonode = navigation_node::create(
-            $strfoo,
-            $url,
-            navigation_node::NODETYPE_LEAF,
-            'cohortcourse',
-            'cohortcourse',
-            new pix_icon('i/settings', $strfoo)
-        );
-        if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
-            $foonode->make_active();
-        }
-        $settingnode->add_node($foonode);
+    if (!is_siteadmin() && !has_capability('local/cohortpro:manager', $context)) {
+        return;
     }
+
+    $settingnode = $settingsnav->find('users', navigation_node::TYPE_SETTING);
+
+    if (!$settingnode) {
+        return;
+    }
+
+    $urltext = get_string('pluginname', 'local_cohortpro');
+    $url = null;
+    $mainnode = $settingnode->create(
+        $urltext,
+        $url,
+        navigation_node::TYPE_CONTAINER,
+        null,
+        'cohortpro',
+        new pix_icon('i/report', $urltext)
+    );
+    $settingnode->add_node($mainnode);
+
+    $urltext = get_string('menu_filter','local_cohortpro');
+    $url = new moodle_url('/local/cohortpro/index.php');
+    $managernode = navigation_node::create(
+        $urltext,
+        $url,
+        navigation_node::NODETYPE_LEAF,
+        'cohortpro_manager',
+        'cohortpro_manager',
+        new pix_icon('i/settings', $urltext)
+    );
+    if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
+        $managernode->make_active();
+    }
+    $mainnode->add_node($managernode);
+
+    $urltext = get_string('menu_upload','local_cohortpro');
+    $url = new moodle_url('/local/cohortpro/uploaduser.php');
+    $uploadnode = navigation_node::create(
+        $urltext,
+        $url,
+        navigation_node::NODETYPE_LEAF,
+        'cohortpro_upload',
+        'cohortpro_upload',
+        new pix_icon('i/settings', $urltext)
+    );
+    if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
+        $uploadnode->make_active();
+    }
+    $mainnode->add_node($uploadnode);
 }

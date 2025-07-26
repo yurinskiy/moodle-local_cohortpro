@@ -22,7 +22,7 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2019092400;
+$plugin->version   = 2025062600;
 $plugin->requires  = 2014111000;
 $plugin->component = 'local_cohortpro';
 $plugin->maturity = MATURITY_STABLE;

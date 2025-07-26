@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package   local_cohort_remove
+ * @package   local_cohortpro
  * @copyright 2019, YuriyYurinskiy <yuriyyurinskiy@yandex.ru>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -48,7 +48,7 @@ if (!$manager) {
 $PAGE->set_pagelayout('admin');
 $PAGE->set_context($context);
 $PAGE->set_url('/local/cohortpro/index.php', ['contextid' => $context->id]);
-$PAGE->set_title(get_string('cohorts', 'cohort'));
+$PAGE->set_title(get_string('menu_filter', 'local_cohortpro'));
 $PAGE->set_heading($COURSE->fullname);
 
 $params = [
